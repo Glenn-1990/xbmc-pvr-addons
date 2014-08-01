@@ -410,7 +410,7 @@ PVR_ERROR CTvheadend::GetRecordingEdl
   ( const PVR_RECORDING &rec, PVR_EDL_ENTRY edl[], int *num )
 {
   /* Not supported */
-  if (m_conn.GetProtocol() < 12)
+  if (m_conn.GetProtocol() < 12 || m_conn.GetProtocol() == 130)
     return PVR_ERROR_NOT_IMPLEMENTED;
   
   htsmsg_t *list;
