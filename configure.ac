@@ -301,6 +301,7 @@ AC_CONFIG_FILES([Makefile \
                  addons/pvr.nextpvr/Makefile \
                  addons/pvr.njoy/Makefile \
                  addons/pvr.tvh/Makefile \
+                 addons/pvr.tvh.autorec/Makefile \
                  addons/pvr.vdr.vnsi/Makefile \
                  addons/pvr.vuplus/Makefile \
                  addons/pvr.wmc/Makefile \
@@ -316,6 +317,7 @@ AC_CONFIG_FILES([Makefile \
                  addons/pvr.nextpvr/addon/addon.xml
                  addons/pvr.njoy/addon/addon.xml
                  addons/pvr.tvh/addon/addon.xml
+                 addons/pvr.tvh.autorec/addon/addon.xml
                  addons/pvr.vdr.vnsi/addon/addon.xml
                  addons/pvr.vuplus/addon/addon.xml
                  addons/pvr.wmc/addon/addon.xml])
