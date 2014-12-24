@@ -12,6 +12,7 @@ SUBDIRS = pvr.argustv \
           pvr.dvbviewer \
           pvr.hts \
           pvr.tvh \
+          pvr.tvh.autorec \
           pvr.mediaportal.tvserver \
           pvr.mythtv \
           pvr.nextpvr \
