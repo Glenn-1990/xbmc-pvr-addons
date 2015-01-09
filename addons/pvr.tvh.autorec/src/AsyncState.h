@@ -29,11 +29,13 @@
  */
 enum eAsyncState
 {
-  ASYNC_NONE = 0,
-  ASYNC_CHN = 1,
-  ASYNC_DVR = 2,
-  ASYNC_EPG = 3,
-  ASYNC_DONE = 4
+  ASYNC_NONE    = 0,
+  ASYNC_CHN     = 1,
+  ASYNC_AUTOREC = 2,
+  ASYNC_TIMEREC = 3,
+  ASYNC_DVR     = 4,
+  ASYNC_EPG     = 5,
+  ASYNC_DONE    = 6
 };
 
 /**

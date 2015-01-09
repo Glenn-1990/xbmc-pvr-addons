@@ -3,7 +3,7 @@
   id="pvr.tvh.autorec"
   version="0.9.9"
   name="Tvheadend Autorec Client"
-  provider-name="Adam Sutton, Glenn-1990">
+  provider-name="Adam Sutton">
   <requires>
     <c-pluff version="0.1"/>
     <import addon="xbmc.pvr" version="1.9.2"/>

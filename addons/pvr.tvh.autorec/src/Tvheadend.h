@@ -61,6 +61,16 @@ extern "C" {
 #define INVALID_SEEKTIME           (-1)
 
 /*
+ * Recoding types defines
+ */
+#define REC_ONCE                   1
+#define REC_EVERYTIME              2
+#define REC_EVERY_WEEK_THIS_TIME   3
+#define REC_EVERY_DAY_THIS_TIME    4
+#define REC_WEEKENDS               5
+#define REC_WEEKDAYS               6
+
+/*
  * Log wrappers
  */
 #define tvhdebug(...) tvhlog(LOG_DEBUG, ##__VA_ARGS__)
@@ -371,6 +381,8 @@ private:
   SChannels                   m_channels;
   STags                       m_tags;
   SRecordings                 m_recordings;
+  SAutorecs                   m_autorecs;
+  STimerecs                   m_timerecs;
   SSchedules                  m_schedules;
 
   SHTSPEventList              m_events;
@@ -419,6 +431,8 @@ private:
   /*
    * Message sending
    */
+  PVR_ERROR   SendAutorecDelete (std::string id);
+  PVR_ERROR   SendTimerecDelete (std::string id);
   PVR_ERROR   SendDvrDelete   ( uint32_t id, const char *method );
   PVR_ERROR   SendDvrUpdate   ( htsmsg_t *m );
 
@@ -426,6 +440,8 @@ private:
    * Channel/Tags/Recordings/Events
    */
   void SyncChannelsCompleted ( void );
+  void SyncAutorecCompleted  ( void );
+  void SyncTimerecCompleted  ( void );
   void SyncDvrCompleted      ( void );
   void SyncEpgCompleted      ( void );
   void SyncCompleted         ( void );
@@ -435,6 +451,10 @@ private:
   void ParseChannelDelete   ( htsmsg_t *m );
   void ParseRecordingUpdate ( htsmsg_t *m );
   void ParseRecordingDelete ( htsmsg_t *m );
+  void ParseAutorecUpdate   ( htsmsg_t *m );
+  void ParseAutorecDelete   ( htsmsg_t *m );
+  void ParseTimerecUpdate   ( htsmsg_t *m );
+  void ParseTimerecDelete   ( htsmsg_t *m );
   void ParseEventUpdate     ( htsmsg_t *m );
   void ParseEventDelete     ( htsmsg_t *m );
   bool ParseEvent           ( htsmsg_t *msg, SEvent &evt );

@@ -52,6 +52,7 @@ string     g_strUsername         = "";
 string     g_strPassword         = "";
 bool       g_bTraceDebug         = false;
 bool       g_bAsyncEpg           = false;
+bool       g_bSerieRec           = true;
 
 /*
  * Global state
@@ -98,6 +99,9 @@ void ADDON_ReadSettings(void)
   /* Debug */
   UPDATE_INT(g_bTraceDebug, "trace_debug", false);
 
+  /* Serie rec */
+  UPDATE_INT(g_bSerieRec,   "serie_rec", true);
+
   /* TODO: Transcoding */
 
 #undef UPDATE_INT
@@ -141,6 +145,12 @@ ADDON_STATUS ADDON_Create(void* hdl, void* _unused(props))
     SAFE_DELETE(XBMC);
     return ADDON_STATUS_LOST_CONNECTION;
   }
+
+  PVR_MENUHOOK menuhookEpgRec2;
+  menuhookEpgRec2.category = PVR_MENUHOOK_EPG;
+  menuhookEpgRec2.iHookId = 1;
+  menuhookEpgRec2.iLocalizedStringId = 30432;
+  PVR->AddMenuHook(&menuhookEpgRec2);
 
   m_CurStatus     = ADDON_STATUS_OK;
   return m_CurStatus;
@@ -221,6 +231,9 @@ ADDON_STATUS ADDON_SetSetting
 
   /* Debug */
   UPDATE_INT("trace_debug", bool, g_bTraceDebug, ADDON_STATUS_OK);
+
+  /* Serie rec */
+  UPDATE_INT("serie_rec", bool, g_bSerieRec, ADDON_STATUS_OK);
 
   /* TODO: Transcoding */
 

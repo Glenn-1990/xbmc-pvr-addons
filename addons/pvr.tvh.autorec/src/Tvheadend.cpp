@@ -21,6 +21,9 @@
 
 #include <sstream>
 #include "Tvheadend.h"
+#include "CGUIDialogRecord.h"
+#include "CGUIDialogDeleteTimer.h"
+#include "utilities.h"
 
 #include "platform/util/util.h"
 
@@ -292,6 +295,64 @@ PVR_ERROR CTvheadend::SendDvrUpdate( htsmsg_t* m )
   return u32 > 0  ? PVR_ERROR_NO_ERROR : PVR_ERROR_FAILED;
 }
 
+PVR_ERROR CTvheadend::SendAutorecDelete (std::string id)
+{
+  const char *str;
+  uint32_t u32;
+
+  CLockObject lock(m_conn.Mutex());
+
+  /* Build message */
+  htsmsg_t *m = htsmsg_create_map();
+  htsmsg_add_str(m, "id", id.c_str());
+
+  /* Send and wait */
+  if ((m = m_conn.SendAndWait("deleteAutorecEntry", m)) == NULL)
+  {
+    tvherror("failed to delete DVR autorec entry");
+    return PVR_ERROR_SERVER_ERROR;
+  }
+
+  /* Check for error */
+  if ((str = htsmsg_get_str(m, "error")) != NULL)
+    tvherror("failed to delete DVR autorec entry [%s]", str);
+  else if (htsmsg_get_u32(m, "success", &u32))
+    tvherror("failed to parse deleteDvrAutorecEntry response");
+
+  htsmsg_destroy(m);
+
+  return u32 > 0  ? PVR_ERROR_NO_ERROR : PVR_ERROR_FAILED;
+}
+
+PVR_ERROR CTvheadend::SendTimerecDelete (std::string id)
+{
+  const char *str;
+  uint32_t u32;
+
+  CLockObject lock(m_conn.Mutex());
+
+  /* Build message */
+  htsmsg_t *m = htsmsg_create_map();
+  htsmsg_add_str(m, "id", id.c_str());
+
+  /* Send and wait */
+  if ((m = m_conn.SendAndWait("deleteTimerecEntry", m)) == NULL)
+  {
+    tvherror("failed to delete DVR timerec entry");
+    return PVR_ERROR_SERVER_ERROR;
+  }
+
+  /* Check for error */
+  if ((str = htsmsg_get_str(m, "error")) != NULL)
+    tvherror("failed to delete DVR timerec entry [%s]", str);
+  else if (htsmsg_get_u32(m, "success", &u32))
+    tvherror("failed to parse deleteDvrTimerecEntry response");
+
+  htsmsg_destroy(m);
+
+  return u32 > 0  ? PVR_ERROR_NO_ERROR : PVR_ERROR_FAILED;
+}
+
 int CTvheadend::GetRecordingCount ( void )
 {
   if (!m_asyncState.WaitForState(ASYNC_EPG))
@@ -474,7 +535,7 @@ PVR_ERROR CTvheadend::GetRecordingEdl
 
 PVR_ERROR CTvheadend::DeleteRecording ( const PVR_RECORDING &rec )
 {
-  return SendDvrDelete(atoi(rec.strRecordingId), "deleteDvrEntry");
+    return SendDvrDelete(atoi(rec.strRecordingId), "deleteDvrEntry");
 }
 
 PVR_ERROR CTvheadend::RenameRecording ( const PVR_RECORDING &rec )
@@ -560,23 +621,38 @@ PVR_ERROR CTvheadend::AddTimer ( const PVR_TIMER &timer )
   uint32_t u32;
   dvr_prio_t prio;
 
-  /* Build message */
-  htsmsg_t *m = htsmsg_create_map();
-  if (timer.iEpgUid > 0)
+  int dlgResult, autorec = 0, timerec = 0;
+
+  if (timer.iEpgUid < 0
+      && timer.iWeekdays != 0
+      && m_conn.GetProtocol() > 17)
   {
-    htsmsg_add_u32(m, "eventId",      timer.iEpgUid);
+      timerec = 1;
   }
-  else
+  else if (timer.iEpgUid >= 0
+            && timer.startTime != 0
+            && g_bSerieRec
+            && m_conn.GetProtocol() > 12)
   {
-    htsmsg_add_str(m, "title",        timer.strTitle);
-    htsmsg_add_s64(m, "start",        timer.startTime);
-    htsmsg_add_s64(m, "stop",         timer.endTime);
-    htsmsg_add_u32(m, "channelId",    timer.iClientChannelUid);
-    htsmsg_add_str(m, "description",  timer.strSummary);
+    CGUIDialogRecord dialog(timer.strTitle);
+    dlgResult = dialog.DoModal();
+
+    if (dlgResult == 0)             // user closed or escaped from dialog
+      return PVR_ERROR_NO_ERROR;
+    else if (dlgResult > 0 && dlgResult != REC_ONCE)
+      autorec = 1;
   }
 
-  htsmsg_add_s64(m, "startExtra", timer.iMarginStart);
-  htsmsg_add_s64(m, "stopExtra",  timer.iMarginEnd);
+  /* Build message */
+  htsmsg_t *m = htsmsg_create_map();
+  htsmsg_add_u32(m, "channelId",    timer.iClientChannelUid);
+  htsmsg_add_str(m, "title",        timer.strTitle);
+
+  if (!timerec)
+  {
+    htsmsg_add_s64(m, "startExtra",   timer.iMarginStart);
+    htsmsg_add_s64(m, "stopExtra",    timer.iMarginEnd);
+  }
 
   if (m_conn.GetProtocol() > 12)
     htsmsg_add_u32(m, "retention", timer.iLifetime);
@@ -595,10 +671,64 @@ PVR_ERROR CTvheadend::AddTimer ( const PVR_TIMER &timer )
 
   htsmsg_add_u32(m, "priority", (int)prio);
 
-  /* Send and Wait */
+  if (timerec)
   {
-    CLockObject lock(m_conn.Mutex());
-    m = m_conn.SendAndWait("addDvrEntry", m);
+    struct tm *tmi;
+    tmi=localtime(&timer.startTime);
+    htsmsg_add_s64(m, "start",        (tmi->tm_hour*60 + tmi->tm_min));
+    tmi=localtime(&timer.endTime);
+    htsmsg_add_s64(m, "stop",         (tmi->tm_hour*60 + tmi->tm_min));
+    htsmsg_add_u32(m, "daysOfWeek",   timer.iWeekdays);
+
+    /* Send and Wait */
+    {
+      CLockObject lock(m_conn.Mutex());
+      m = m_conn.SendAndWait("addTimerecEntry", m);
+    }
+  }
+  else if (autorec)
+  {
+    uint32_t days_of_week;
+    int32_t approx_time;
+    struct tm *tmi;
+
+    tmi=localtime(&timer.startTime);
+    approx_time = (tmi->tm_hour*60)+(tmi->tm_min);
+    days_of_week = tmi->tm_wday > 0 ? (1<<(tmi->tm_wday-1)) : (1<<6);
+
+    if (dlgResult == REC_EVERY_WEEK_THIS_TIME || dlgResult == REC_EVERY_DAY_THIS_TIME )
+      htsmsg_add_s32(m, "approxTime", approx_time >= 0 ? approx_time : -1);
+    if (dlgResult == REC_EVERYTIME || dlgResult == REC_EVERY_DAY_THIS_TIME)
+      htsmsg_add_u32(m, "daysOfWeek", 0x007F);
+    if (dlgResult == REC_WEEKENDS)
+      htsmsg_add_u32(m, "daysOfWeek", 0x0060);
+    if (dlgResult == REC_WEEKDAYS)
+      htsmsg_add_u32(m, "daysOfWeek", 0x001F);
+    if (dlgResult == REC_EVERY_WEEK_THIS_TIME)
+      htsmsg_add_u32(m, "daysOfWeek", days_of_week);
+
+    /* Send and Wait */
+    {
+      CLockObject lock(m_conn.Mutex());
+      m = m_conn.SendAndWait("addAutorecEntry", m);
+    }
+  }
+  else
+  {
+    if (timer.iEpgUid)
+      htsmsg_add_u32(m, "eventId",      timer.iEpgUid);
+    else
+    {
+      htsmsg_add_s64(m, "start",        timer.startTime);
+      htsmsg_add_s64(m, "stop",         timer.endTime);
+      htsmsg_add_str(m, "description",  timer.strSummary);
+    }
+
+    /* Send and Wait */
+    {
+      CLockObject lock(m_conn.Mutex());
+      m = m_conn.SendAndWait("addDvrEntry", m);
+    }
   }
 
   if (m == NULL)
@@ -607,8 +737,9 @@ PVR_ERROR CTvheadend::AddTimer ( const PVR_TIMER &timer )
   /* Check for error */
   if (htsmsg_get_u32(m, "success", &u32))
   {
-    tvherror("failed to parse addDvrEntry response");
+    tvherror("failed to parse addDvrEntry/addDvrAutorecEntry response");
   }
+
   htsmsg_destroy(m);
 
   return u32 > 0  ? PVR_ERROR_NO_ERROR : PVR_ERROR_FAILED;
@@ -617,11 +748,60 @@ PVR_ERROR CTvheadend::AddTimer ( const PVR_TIMER &timer )
 PVR_ERROR CTvheadend::DeleteTimer
   ( const PVR_TIMER &timer, bool _unused(force) )
 {
+  if (g_bSerieRec)
+  {
+    std::string aedId;
+    std::string tedId;
+
+    aedId = m_recordings[timer.iClientIndex].autorecId;
+    tedId = m_recordings[timer.iClientIndex].timerecId;
+
+    if (!aedId.empty())
+    {
+      char buff[1024], buff2[256];
+      int32_t approx_time = m_autorecs[aedId].approxTime;
+
+      sprintf(buff,XBMC->GetLocalizedString(30011), timer.strTitle);
+
+      if (approx_time < 0)
+        sprintf(buff2,"%s %s", XBMC->GetLocalizedString(30009),XBMC->GetLocalizedString(30010));
+      else
+        sprintf(buff2,"%s %02i:%02i", XBMC->GetLocalizedString(30009), approx_time/60,approx_time%60);
+
+      CGUIDialogDeleteTimer vWindow(buff,dayOfWeekToString(m_autorecs[aedId].daysOfWeek,splitString(XBMC->GetLocalizedString(30008),";")),buff2);
+      int dlgResult = vWindow.DoModal();
+
+      if (dlgResult == -1){}          // no skin xml file present??
+      else if (dlgResult == 0)        // user closed or escaped from dialog
+        return PVR_ERROR_NO_ERROR;
+      else if (dlgResult == 2)
+        return SendAutorecDelete(aedId);
+    }
+    else if (!tedId.empty())
+    {
+      char buff[1024];
+      sprintf(buff,XBMC->GetLocalizedString(30011), timer.strTitle);
+
+      CGUIDialogDeleteTimer vWindow(buff,dayOfWeekToString(m_timerecs[tedId].daysOfWeek,splitString(XBMC->GetLocalizedString(30008),";")),"");
+      int dlgResult = vWindow.DoModal();
+
+      if (dlgResult == -1){}          // no skin xml file present??
+      else if (dlgResult == 0)        // user closed or escaped from dialog
+        return PVR_ERROR_NO_ERROR;
+      else if (dlgResult == 2)
+        return SendTimerecDelete(tedId);
+    }
+  }
+
   return SendDvrDelete(timer.iClientIndex, "cancelDvrEntry");
 }
 
 PVR_ERROR CTvheadend::UpdateTimer ( const PVR_TIMER &timer )
 {
+  // Canceling timers not supported by backend, delete instead
+  if (timer.state == PVR_TIMER_STATE_CANCELLED)
+    return DeleteTimer(timer,true);
+
   /* Build message */
   htsmsg_t *m = htsmsg_create_map();
   htsmsg_add_u32(m, "id",           timer.iClientIndex);
@@ -878,6 +1058,20 @@ void* CTvheadend::Process ( void )
       else if (!strcmp("dvrEntryDelete", method))
         ParseRecordingDelete(msg.m_msg);
 
+      /* Autorecs */
+      else if (!strcmp("autorecEntryAdd", method) ||
+               !strcmp("autorecEntryUpdate", method))
+        ParseAutorecUpdate(msg.m_msg);
+      else if (!strcmp("autorecEntryDelete", method))
+        ParseAutorecDelete(msg.m_msg);
+
+      /* Timerecs */
+      else if (!strcmp("timerecEntryAdd", method) ||
+               !strcmp("timerecEntryUpdate", method))
+        ParseTimerecUpdate(msg.m_msg);
+      else if (!strcmp("timerecEntryDelete", method))
+        ParseTimerecDelete(msg.m_msg);
+
       /* EPG */
       else if (!strcmp("eventAdd", method) ||
                !strcmp("eventUpdate", method))
@@ -935,6 +1129,8 @@ void CTvheadend::SyncCompleted ( void )
 {
   /* The complete calls are probably redundant, but its a safety feature */
   SyncChannelsCompleted();
+  SyncAutorecCompleted();
+  SyncTimerecCompleted();
   SyncDvrCompleted();
   SyncEpgCompleted();
   m_asyncState.SetState(ASYNC_DONE);
@@ -982,6 +1178,64 @@ void CTvheadend::SyncChannelsCompleted ( void )
   if (update)
     tvhinfo("channels updated");
   
+  /* Next */
+  m_asyncState.SetState(ASYNC_DVR);
+}
+
+void CTvheadend::SyncAutorecCompleted ( void )
+{
+  /* Done */
+  if (m_asyncState.GetState() > ASYNC_AUTOREC)
+    return;
+
+  bool update;
+  SAutorecs::iterator rit = m_autorecs.begin();
+
+  /* Recordings */
+  update = false;
+  while (rit != m_autorecs.end())
+  {
+    if (rit->second.del)
+    {
+      update = true;
+      m_autorecs.erase(rit++);
+    }
+    else
+      ++rit;
+  }
+
+  if (update)
+    tvhinfo("autorecs updated");
+
+  /* Next */
+  m_asyncState.SetState(ASYNC_TIMEREC);
+}
+
+void CTvheadend::SyncTimerecCompleted ( void )
+{
+  /* Done */
+  if (m_asyncState.GetState() > ASYNC_TIMEREC)
+    return;
+
+  bool update;
+  STimerecs::iterator rit = m_timerecs.begin();
+
+  /* Recordings */
+  update = false;
+  while (rit != m_timerecs.end())
+  {
+    if (rit->second.del)
+    {
+      update = true;
+      m_timerecs.erase(rit++);
+    }
+    else
+      ++rit;
+  }
+
+  if (update)
+    tvhinfo("autorecs updated");
+
   /* Next */
   m_asyncState.SetState(ASYNC_DVR);
 }
@@ -1235,8 +1489,8 @@ void CTvheadend::ParseRecordingUpdate ( htsmsg_t *msg )
   uint32_t id, channel, eventId, retention, priority;
   int64_t start, stop, startExtra, stopExtra;
 
-  /* Channels must be complete */
-  SyncChannelsCompleted();
+  /* Timerecs complete */
+  SyncTimerecCompleted();
 
   /* Validate */
   if (htsmsg_get_u32(msg, "id",      &id)      ||
@@ -1339,6 +1593,12 @@ void CTvheadend::ParseRecordingUpdate ( htsmsg_t *msg )
     UPDATE(rec.description, str);
   }
 
+  /* Optional Id's */
+  if ((str = htsmsg_get_str(msg, "autorecId")) != NULL)
+    UPDATE(rec.autorecId, str);
+  if ((str = htsmsg_get_str(msg, "timerecId")) != NULL)
+    UPDATE(rec.timerecId, str);
+
   /* Error */
   if ((str = htsmsg_get_str(msg, "error")) != NULL)
   {
@@ -1361,9 +1621,9 @@ void CTvheadend::ParseRecordingUpdate ( htsmsg_t *msg )
   {
     std::string error = rec.error.empty() ? "none" : rec.error;
     
-    tvhdebug("recording id:%d, state:%s, title:%s, desc:%s, error:%s",
+    tvhdebug("recording id:%d, state:%s, title:%s, desc:%s, autorecId:%s, timerecId:%s, error:%s",
              rec.id, state, rec.title.c_str(), rec.description.c_str(),
-             error.c_str());
+             rec.autorecId.c_str(), rec.timerecId.c_str(), error.c_str());
 
     if (m_asyncState.GetState() > ASYNC_DVR)
     {
@@ -1392,6 +1652,169 @@ void CTvheadend::ParseRecordingDelete ( htsmsg_t *msg )
   /* Update */
   TriggerTimerUpdate();
   TriggerRecordingUpdate();
+}
+
+void CTvheadend::ParseAutorecUpdate ( htsmsg_t *msg )
+{
+  bool update = false;
+  const char *state, *str, *id;
+  uint32_t channel, eventId, retention, priority, daysOfWeek, enabled;
+  int64_t startExtra, stopExtra, intId;
+  int32_t approxTime;
+
+  /* Channels must be complete */
+  SyncChannelsCompleted();
+
+  if ((id = htsmsg_get_str(msg, "id")) == NULL)
+  {
+    tvherror("malformed autorecEntryAdd/autorecEntryUpdate");
+    return;
+  }
+
+  std::string strid(id);
+  SAutorec &ae = m_autorecs[strid.c_str()];
+
+  ae.id  = strid.c_str();
+  ae.del = false;
+
+  if (!htsmsg_get_s64(msg, "startExtra", &startExtra))
+    UPDATE(ae.startExtra, startExtra);
+  if (!htsmsg_get_s64(msg, "stopExtra",  &stopExtra))
+    UPDATE(ae.stopExtra,  stopExtra);
+  if (!htsmsg_get_u32(msg, "retention",  &retention))
+    UPDATE(ae.retention, retention);
+  if (!htsmsg_get_u32(msg, "daysOfWeek", &daysOfWeek))
+    UPDATE(ae.daysOfWeek, daysOfWeek);
+  if (!htsmsg_get_u32(msg, "enabled", &enabled))
+    UPDATE(ae.enabled, enabled);
+  if (!htsmsg_get_s32(msg, "approxTime", &approxTime))
+    UPDATE(ae.approxTime, approxTime);
+
+  if (!htsmsg_get_u32(msg, "priority",   &priority))
+  {
+    switch (priority)
+    {
+      case DVR_PRIO_IMPORTANT:
+        UPDATE(ae.priority, 100);
+        break;
+      case DVR_PRIO_HIGH:
+        UPDATE(ae.priority, 75);
+        break;
+      case DVR_PRIO_NORMAL:
+        UPDATE(ae.priority, 50);
+        break;
+      case DVR_PRIO_LOW:
+        UPDATE(ae.priority, 25);
+        break;
+      case DVR_PRIO_UNIMPORTANT:
+        UPDATE(ae.priority, 0);
+        break;
+      default:
+        tvherror("malformed autorecEntryAdd/autorecEntryUpdate");
+        return;
+    }
+  }
+
+  /* Update */
+  if (update)
+    tvhinfo("autorec updated, id:%s", ae.id.c_str());
+}
+
+void CTvheadend::ParseAutorecDelete ( htsmsg_t *msg )
+{
+  const char  *id;
+
+  /* Validate */
+  if ((id = htsmsg_get_str(msg, "id")) == NULL)
+  {
+    tvherror("malformed autorecEntryDelete");
+    return;
+  }
+
+  tvhdebug("delete autorec %s", id);
+
+  /* Erase */
+  m_autorecs.erase(id);
+}
+
+void CTvheadend::ParseTimerecUpdate ( htsmsg_t *msg )
+{
+  bool update = false;
+  const char *state, *str, *id;
+  uint32_t channel, eventId, retention, priority, daysOfWeek, enabled;
+  int32_t approxTime, start, stop;
+
+  /* Autorecs must be complete */
+  SyncAutorecCompleted();
+
+  if ((id = htsmsg_get_str(msg, "id")) == NULL)
+  {
+    tvherror("malformed timerecEntryAdd/timerecEntryUpdate");
+    return;
+  }
+
+  std::string strid(id);
+  STimerec &te = m_timerecs[strid.c_str()];
+
+  te.id  = strid.c_str();
+  te.del = false;
+
+  if (!htsmsg_get_s32(msg, "start", &start))
+    UPDATE(te.start, start);
+  if (!htsmsg_get_s32(msg, "stop",  &stop))
+    UPDATE(te.stop,  stop);
+  if (!htsmsg_get_u32(msg, "retention",  &retention))
+    UPDATE(te.retention, retention);
+  if (!htsmsg_get_u32(msg, "daysOfWeek", &daysOfWeek))
+    UPDATE(te.daysOfWeek, daysOfWeek);
+  if (!htsmsg_get_u32(msg, "enabled", &enabled))
+    UPDATE(te.enabled, enabled);
+
+  if (!htsmsg_get_u32(msg, "priority",   &priority))
+  {
+    switch (priority)
+    {
+      case DVR_PRIO_IMPORTANT:
+        UPDATE(te.priority, 100);
+        break;
+      case DVR_PRIO_HIGH:
+        UPDATE(te.priority, 75);
+        break;
+      case DVR_PRIO_NORMAL:
+        UPDATE(te.priority, 50);
+        break;
+      case DVR_PRIO_LOW:
+        UPDATE(te.priority, 25);
+        break;
+      case DVR_PRIO_UNIMPORTANT:
+        UPDATE(te.priority, 0);
+        break;
+      default:
+        tvherror("malformed timerecEntryAdd/timerecEntryUpdate");
+        return;
+    }
+  }
+
+  /* Update */
+  if (update)
+    tvhinfo("timerec updated, id:%s", te.id.c_str());
+}
+
+void CTvheadend::ParseTimerecDelete ( htsmsg_t *msg )
+{
+  const char  *id;
+
+  /* Validate */
+  if ((id = htsmsg_get_str(msg, "id")) == NULL)
+  {
+    tvherror("malformed timerecEntryDelete");
+    return;
+  }
+
+  tvhdebug("delete timerec %s", id);
+
+  /* Erase */
+  m_timerecs.erase(id);
 }
 
 bool CTvheadend::ParseEvent ( htsmsg_t *msg, SEvent &evt )

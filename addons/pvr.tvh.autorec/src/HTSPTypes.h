@@ -125,6 +125,8 @@ struct SRecording
   std::string      title;
   std::string      path;
   std::string      description;
+  std::string      autorecId;
+  std::string      timerecId;
   PVR_TIMER_STATE  state;
   std::string      error;
   uint32_t         retention;
@@ -146,6 +148,8 @@ struct SRecording
     title.clear();
     description.clear();
     error.clear();
+    autorecId.clear();
+    timerecId.clear();
 
     retention = 99; // kodi default - "99 days"
     priority  = 50; // kodi default - "normal"
@@ -162,6 +166,61 @@ struct SRecording
   {
     return state == PVR_TIMER_STATE_SCHEDULED ||
            state == PVR_TIMER_STATE_RECORDING;
+  }
+};
+
+struct SAutorec
+{
+  bool             del;
+  std::string      id;
+  int64_t          startExtra;
+  int64_t          stopExtra;
+  uint32_t         retention;
+  uint32_t         priority;
+  uint32_t         daysOfWeek;
+  uint32_t         enabled;
+  int32_t          approxTime;
+
+  SAutorec() { Clear(); }
+  void Clear()
+  {
+    del        = false;
+    approxTime = -1;
+    startExtra = 0;
+    stopExtra  = 0;
+    enabled    = 0;
+    daysOfWeek = 0;
+
+    retention = 99; // kodi default - "99 days"
+    priority  = 50; // kodi default - "normal"
+
+    id.clear();
+  }
+};
+
+struct STimerec
+{
+  bool             del;
+  std::string      id;
+  uint32_t         retention;
+  uint32_t         priority;
+  uint32_t         daysOfWeek;
+  uint32_t         enabled;
+  int32_t          start;
+  int32_t          stop;
+
+  STimerec() { Clear(); }
+  void Clear()
+  {
+    del        = false;
+    start      = 0;
+    stop       = 0;
+    enabled    = 0;
+
+    retention = 99; // kodi default - "99 days"
+    priority  = 50; // kodi default - "normal"
+
+    id.clear();
   }
 };
 
@@ -214,6 +273,8 @@ typedef std::map<uint32_t, SChannel>   SChannels;
 typedef std::map<uint32_t, STag>       STags;
 typedef std::map<uint32_t, SEvent>     SEvents;
 typedef std::map<uint32_t, SRecording> SRecordings;
+typedef std::map<std::string, SAutorec>   SAutorecs;
+typedef std::map<std::string, STimerec>   STimerecs;
 
 struct SSchedule
 {

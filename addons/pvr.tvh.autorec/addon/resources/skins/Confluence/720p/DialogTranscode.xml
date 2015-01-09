@@ -30,7 +30,7 @@
             <width>720</width>
             <height>30</height>
             <font>font13_title</font>
-            <label>$ADDON[pvr.hts 30101]</label>
+            <label>$ADDON[pvr.tvh.autorec 30101]</label>
             <align>center</align>
             <aligny>center</aligny>
             <textcolor>selected</textcolor>
@@ -60,7 +60,7 @@
             <posy>50</posy>
             <height>40</height>
             <width>720</width>
-            <label>$ADDON[pvr.hts 30102]</label>
+            <label>$ADDON[pvr.tvh.autorec 30102]</label>
             <font>font13</font>
             <textcolor>grey2</textcolor>
             <focusedcolor>white</focusedcolor>
@@ -83,7 +83,7 @@
           <focusedcolor>white</focusedcolor>
           <texturenofocus border="5">button-nofocus.png</texturenofocus>
           <texturefocus border="5">button-focus2.png</texturefocus>
-          <label>$ADDON[pvr.hts 30103]</label>
+          <label>$ADDON[pvr.tvh.autorec 30103]</label>
           <onright>11</onright>
           <onleft>11</onleft>
           <onup>10</onup>
@@ -102,7 +102,7 @@
           <texturenofocus border="5">button-nofocus.png</texturenofocus>
           <texturefocus border="5">button-focus2.png</texturefocus>
           <aligny>center</aligny>
-          <label>$ADDON[pvr.hts 30104]</label>
+          <label>$ADDON[pvr.tvh.autorec 30104]</label>
           <onright>12</onright>
           <onleft>12</onleft>
           <onup>11</onup>
@@ -121,7 +121,7 @@
           <texturenofocus border="5">button-nofocus.png</texturenofocus>
           <texturefocus border="5">button-focus2.png</texturefocus>
           <aligny>center</aligny>
-          <label>$ADDON[pvr.hts 30105]</label>
+          <label>$ADDON[pvr.tvh.autorec 30105]</label>
           <onright>13</onright>
           <onleft>13</onleft>
           <onup>12</onup>

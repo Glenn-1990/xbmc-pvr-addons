@@ -22,4 +22,9 @@
     <setting id="trace_debug" type="bool" label="30201" default="false"/>
   </category>
 
+  <!-- serie rec -->
+  <category label="serie recordings">
+    <setting id="serie_rec" type="bool" label="serie recordings" default="true"/>
+  </category>
+
 </settings>
