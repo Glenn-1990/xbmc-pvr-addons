@@ -165,7 +165,8 @@ struct SRecording
   bool IsTimer () const
   {
     return state == PVR_TIMER_STATE_SCHEDULED ||
-           state == PVR_TIMER_STATE_RECORDING;
+           state == PVR_TIMER_STATE_RECORDING ||
+           state == PVR_TIMER_STATE_CONFLICT_NOK;
   }
 };
 

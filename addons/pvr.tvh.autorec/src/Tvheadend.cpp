@@ -20,6 +20,7 @@
  */
 
 #include <sstream>
+#include <algorithm>
 #include "Tvheadend.h"
 #include "CGUIDialogRecord.h"
 #include "CGUIDialogDeleteTimer.h"
@@ -260,7 +261,8 @@ PVR_ERROR CTvheadend::SendDvrDelete ( uint32_t id, const char *method )
   htsmsg_add_u32(m, "id", id);
 
   /* Send and wait a bit longer than usual */
-  if ((m = m_conn.SendAndWait(method, m, 30)) == NULL)
+  if ((m = m_conn.SendAndWait(method, m,
+      std::max(30, g_iResponseTimeout))) == NULL)
     return PVR_ERROR_SERVER_ERROR;
 
   /* Check for error */
@@ -370,7 +372,7 @@ int CTvheadend::GetRecordingCount ( void )
 PVR_ERROR CTvheadend::GetRecordings ( ADDON_HANDLE handle )
 {
   if (!m_asyncState.WaitForState(ASYNC_EPG))
-    return PVR_ERROR_NO_ERROR;
+    return PVR_ERROR_FAILED;
   
   std::vector<PVR_RECORDING> recs;
   {
@@ -590,7 +592,12 @@ PVR_ERROR CTvheadend::GetTimers ( ADDON_HANDLE handle )
               sizeof(tmr.strTitle) - 1);
       strncpy(tmr.strSummary, rit->second.description.c_str(),
               sizeof(tmr.strSummary) - 1);
-      tmr.state             = rit->second.state;
+
+      if (rit->second.error.empty())
+        tmr.state             = rit->second.state;
+      else
+        tmr.state             = PVR_TIMER_STATE_ERROR;
+
       tmr.iPriority         = rit->second.priority;
       tmr.iLifetime         = rit->second.retention;
       tmr.bIsRepeating      = false; // unused
@@ -976,6 +983,9 @@ bool CTvheadend::Connected ( void )
   htsmsg_t *msg;
   STags::iterator tit;
   SChannels::iterator cit;
+  SRecordings::iterator rit;
+  SSchedules::iterator sit;
+  SEvents::iterator eit;
 
   /* Rebuild state */
   m_dmx.Connected();
@@ -986,6 +996,15 @@ bool CTvheadend::Connected ( void )
     cit->second.del = true;
   for (tit = m_tags.begin(); tit != m_tags.end(); ++tit)
     tit->second.del = true;
+  for (rit = m_recordings.begin(); rit != m_recordings.end(); ++rit)
+    rit->second.del = true;
+  for (sit = m_schedules.begin(); sit != m_schedules.end(); ++sit)
+  {
+    sit->second.del = true;
+
+    for (eit = sit->second.events.begin(); eit != sit->second.events.end(); ++eit)
+      eit->second.del = true;
+  }
 
   /* Request Async data */
   m_asyncState.SetState(ASYNC_NONE);
@@ -1610,6 +1629,12 @@ void CTvheadend::ParseRecordingUpdate ( htsmsg_t *msg )
     {
       UPDATE(rec.state, PVR_TIMER_STATE_ERROR);
     }
+    else if (!strcmp(str, "No free adapter") ||
+             !strcmp(str, "Adapter in use by other subscription"))
+    {
+      //no free adapter => conflict
+      UPDATE(rec.state, PVR_TIMER_STATE_CONFLICT_NOK);
+    }
     else
     {
       UPDATE(rec.error, str);
@@ -1657,9 +1682,9 @@ void CTvheadend::ParseRecordingDelete ( htsmsg_t *msg )
 void CTvheadend::ParseAutorecUpdate ( htsmsg_t *msg )
 {
   bool update = false;
-  const char *state, *str, *id;
-  uint32_t channel, eventId, retention, priority, daysOfWeek, enabled;
-  int64_t startExtra, stopExtra, intId;
+  const char *id;
+  uint32_t retention, priority, daysOfWeek, enabled;
+  int64_t startExtra, stopExtra;
   int32_t approxTime;
 
   /* Channels must be complete */
@@ -1740,9 +1765,9 @@ void CTvheadend::ParseAutorecDelete ( htsmsg_t *msg )
 void CTvheadend::ParseTimerecUpdate ( htsmsg_t *msg )
 {
   bool update = false;
-  const char *state, *str, *id;
-  uint32_t channel, eventId, retention, priority, daysOfWeek, enabled;
-  int32_t approxTime, start, stop;
+  const char *id;
+  uint32_t retention, priority, daysOfWeek, enabled;
+  int32_t start, stop;
 
   /* Autorecs must be complete */
   SyncAutorecCompleted();

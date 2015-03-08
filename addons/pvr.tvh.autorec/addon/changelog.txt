@@ -1,3 +1,6 @@
+1.0.0
+ - fixed some small bugs
+
 0.9.9
  - add initial autorec support
  
