@@ -1,3 +1,4 @@
+#if 0
 /*
  *      Copyright (C) 2005-2014 Team XBMC
  *      http://xbmc.org
@@ -139,3 +140,4 @@ bool CGUIDialogDeleteTimer::OnAction(int actionId)
   else
     return false;
 }
+# endif

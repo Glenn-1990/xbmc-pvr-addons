@@ -1,3 +1,4 @@
+#if 0
 /*
  *      Copyright (C) 2005-2014 Team XBMC
  *      http://xbmc.org
@@ -61,7 +62,7 @@ bool CGUIDialogRecord::OnClick(int controlId)
   switch(controlId)
   {
   case BUTTON_REC_ONCE:
-    _returnValue = REC_ONCE;
+    //_returnValue = REC_ONCE;
     _window->Close();
     break;
   case BUTTON_REC_EVERYTIME:
@@ -150,3 +151,4 @@ bool CGUIDialogRecord::OnAction(int actionId)
   else
     return false;
 }
+#endif

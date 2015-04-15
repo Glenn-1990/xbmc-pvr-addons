@@ -61,14 +61,19 @@ extern "C" {
 #define INVALID_SEEKTIME           (-1)
 
 /*
- * Recoding types defines
+ * Recording types available through menu hooks
  */
-#define REC_ONCE                   1
-#define REC_EVERYTIME              2
+#define REC_EVERYTIME              1
+#define REC_EVERY_DAY_THIS_TIME    2
 #define REC_EVERY_WEEK_THIS_TIME   3
-#define REC_EVERY_DAY_THIS_TIME    4
+#define REC_WEEKDAYS               4
 #define REC_WEEKENDS               5
-#define REC_WEEKDAYS               6
+
+/*
+ * Timer options available through menu hooks
+ */
+#define TIMER_DELETESCHEDULE       6
+#define TIMER_DELETEDVRENTRY       7
 
 /*
  * Log wrappers
@@ -363,10 +368,19 @@ public:
   PVR_ERROR AddTimer          ( const PVR_TIMER &tmr );
   PVR_ERROR DeleteTimer       ( const PVR_TIMER &tmr, bool force );
   PVR_ERROR UpdateTimer       ( const PVR_TIMER &tmr );
+  PVR_ERROR AddTimerecording  ( const PVR_TIMER &tmr );
 
   PVR_ERROR GetEpg            ( ADDON_HANDLE handle, const PVR_CHANNEL &chn,
                                 time_t start, time_t end );
   
+  /*
+  * Methods only used by menuhooks
+  */
+  PVR_ERROR CallMenuHook        ( const PVR_MENUHOOK &menuhook, const PVR_MENUHOOK_DATA &item );
+  PVR_ERROR AddAutoRecording    ( uint32_t typeId, const SEvent &event );
+  PVR_ERROR SendScheduleDelete  ( std::string id, const char *method );
+  bool      GetEventFromId      ( uint32_t id, SEvent &evt );
+
 private:
   uint32_t GetNextUnnumberedChannelNumber();
   
@@ -381,7 +395,6 @@ private:
   SChannels                   m_channels;
   STags                       m_tags;
   SRecordings                 m_recordings;
-  SAutorecs                   m_autorecs;
   STimerecs                   m_timerecs;
   SSchedules                  m_schedules;
 
@@ -431,8 +444,6 @@ private:
   /*
    * Message sending
    */
-  PVR_ERROR   SendAutorecDelete (std::string id);
-  PVR_ERROR   SendTimerecDelete (std::string id);
   PVR_ERROR   SendDvrDelete   ( uint32_t id, const char *method );
   PVR_ERROR   SendDvrUpdate   ( htsmsg_t *m );
 
@@ -440,7 +451,6 @@ private:
    * Channel/Tags/Recordings/Events
    */
   void SyncChannelsCompleted ( void );
-  void SyncAutorecCompleted  ( void );
   void SyncTimerecCompleted  ( void );
   void SyncDvrCompleted      ( void );
   void SyncEpgCompleted      ( void );
@@ -451,8 +461,6 @@ private:
   void ParseChannelDelete   ( htsmsg_t *m );
   void ParseRecordingUpdate ( htsmsg_t *m );
   void ParseRecordingDelete ( htsmsg_t *m );
-  void ParseAutorecUpdate   ( htsmsg_t *m );
-  void ParseAutorecDelete   ( htsmsg_t *m );
   void ParseTimerecUpdate   ( htsmsg_t *m );
   void ParseTimerecDelete   ( htsmsg_t *m );
   void ParseEventUpdate     ( htsmsg_t *m );
@@ -475,6 +483,10 @@ public:
   inline const char *GetServerVersion ( void )
   {
     return m_conn.GetServerVersion();
+  }
+  inline const int GetProtocolVersion ( void )
+  {
+    return m_conn.GetProtocol();
   }
   inline const char *GetServerString  ( void )
   {

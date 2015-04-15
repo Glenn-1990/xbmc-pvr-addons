@@ -1,5 +1,5 @@
 #pragma once
-
+#if 0
 /*
  *      Copyright (C) 2005-2014 Team XBMC
  *      http://xbmc.org
@@ -55,4 +55,4 @@ private:
   static bool OnActionCB(GUIHANDLE cbhdl, int actionId);
 
 };
-
+#endif

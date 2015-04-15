@@ -1,4 +1,5 @@
 #pragma once
+#if 0
 
 /*
  *      Copyright (C) 2005-2014 Team XBMC
@@ -53,4 +54,4 @@ private:
   static bool OnActionCB(GUIHANDLE cbhdl, int actionId);
 
 };
-
+# endif

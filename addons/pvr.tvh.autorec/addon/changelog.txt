@@ -1,3 +1,9 @@
+1.0.3
+ - small fix for timerecs
+
+1.0.1
+ - use menu hooks for repeating timers now
+ 
 1.0.0
  - fixed some small bugs
 

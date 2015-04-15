@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <addon
   id="pvr.tvh.autorec"
-  version="1.0.0"
+  version="1.0.3"
   name="Tvheadend Autorec Client"
   provider-name="Adam Sutton">
   <requires>
