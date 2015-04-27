@@ -1,3 +1,6 @@
+1.0.4
+ - add 'record only new episodes' for autorecordings
+
 1.0.3
  - small fix for timerecs
 

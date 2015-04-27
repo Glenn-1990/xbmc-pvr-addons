@@ -68,6 +68,7 @@ extern "C" {
 #define REC_EVERY_WEEK_THIS_TIME   3
 #define REC_WEEKDAYS               4
 #define REC_WEEKENDS               5
+#define REC_ALL_NEW_EPISODES       6
 
 /*
  * Timer options available through menu hooks

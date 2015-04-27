@@ -935,9 +935,9 @@ PVR_ERROR CTvheadend::AddAutoRecording( uint32_t typeId, const SEvent &event )
     htsmsg_add_str(m, "name",         event.title.c_str());
     htsmsg_add_str(m, "comment",      "Created by Kodi Media Center");
 
-    if (typeId == REC_EVERY_WEEK_THIS_TIME || typeId == REC_EVERY_DAY_THIS_TIME )
+    if (typeId == REC_EVERY_WEEK_THIS_TIME || typeId == REC_EVERY_DAY_THIS_TIME)
       htsmsg_add_s32(m, "approxTime", approx_time >= 0 ? approx_time : -1);
-    if (typeId == REC_EVERYTIME || typeId == REC_EVERY_DAY_THIS_TIME)
+    if (typeId == REC_EVERYTIME || typeId == REC_EVERY_DAY_THIS_TIME || typeId == REC_ALL_NEW_EPISODES)
       htsmsg_add_u32(m, "daysOfWeek", 0x007F);
     if (typeId == REC_WEEKENDS)
       htsmsg_add_u32(m, "daysOfWeek", 0x0060);
@@ -945,6 +945,11 @@ PVR_ERROR CTvheadend::AddAutoRecording( uint32_t typeId, const SEvent &event )
       htsmsg_add_u32(m, "daysOfWeek", 0x001F);
     if (typeId == REC_EVERY_WEEK_THIS_TIME)
       htsmsg_add_u32(m, "daysOfWeek", days_of_week);
+    if (typeId == REC_ALL_NEW_EPISODES)
+    {
+      htsmsg_add_u32(m, "dupDetect", event.episode > 0 ?
+          (int)DVR_AUTOREC_RECORD_DIFFERENT_EPISODE_NUMBER : (int)DVR_AUTOREC_RECORD_DIFFERENT_SUBTITLE);
+    }
 
     /* Send and Wait */
     {

@@ -102,6 +102,10 @@ msgctxt "#31001"
 msgid "Reconnected to '%s'"
 msgstr ""
 
+msgctxt "#30249"
+msgid "Record only new episodes"
+msgstr ""
+
 msgctxt "#30250"
 msgid "Record any time"
 msgstr ""

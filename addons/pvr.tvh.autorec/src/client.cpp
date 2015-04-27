@@ -155,6 +155,13 @@ ADDON_STATUS ADDON_Create(void* hdl, void* _unused(props))
     menuhookEpg.iLocalizedStringId = 30250;
     PVR->AddMenuHook(&menuhookEpg);
 
+    if (tvh->GetProtocolVersion() > 19)
+    {
+      menuhookEpg.iHookId = REC_ALL_NEW_EPISODES;
+      menuhookEpg.iLocalizedStringId = 30249;
+      PVR->AddMenuHook(&menuhookEpg);
+    }
+
     menuhookEpg.iHookId = REC_EVERY_DAY_THIS_TIME;
     menuhookEpg.iLocalizedStringId = 30251;
     PVR->AddMenuHook(&menuhookEpg);

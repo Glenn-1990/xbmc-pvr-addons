@@ -101,9 +101,13 @@ msgctxt "#31001"
 msgid "Reconnected to '%s'"
 msgstr "Verbinding met '%s' hersteld"
 
+msgctxt "#30249"
+msgid "Record only new episodes"
+msgstr "Neem alleen nieuwe afleveringen op"
+
 msgctxt "#30250"
 msgid "Record any time"
-msgstr "Altijd opnemen"
+msgstr "Neem altijd op"
 
 msgctxt "#30251"
 msgid "Record daily around this time"
@@ -115,11 +119,11 @@ msgstr "Wekelijks rond deze tijd"
 
 msgctxt "#30253"
 msgid "Record any time on weekdays"
-msgstr "Altijd op weekdagen"
+msgstr "Altijd opnemen op weekdagen"
 
 msgctxt "#30254"
 msgid "Record any time on weekends"
-msgstr "Altijd in weekends"
+msgstr "Altijd opnemen in weekends"
 
 msgctxt "#30255"
 msgid "Delete the complete timer schedule"
